@@ -1,0 +1,55 @@
+
+
+# modify to use thermodynamic properties recommended by Pokrovski et al. 2014
+mod.obigt("Ag(HS)2-", G = 287, H = -6636, S = 49.00, Cp = 3.348, V = 42.82, a1 = 7.8651, a2 = 11.4225, a3 = 1.2604, a4 = -3.2512, c1 = 13.9576, c2 = -2.3624, omega = 0.6367)
+mod.obigt("AgCl2-", G = -51350, H = -60092, S = 49.78, Cp = -16.6, V = 37.1, a1 = 7.1327, a2 = 9.8065, a3 = 1.8947, a4 = -3.1844, c1 = 4.8953, c2 = -6.7789, omega = 0.6667)
+mod.obigt("AgCl", G = -17399, H = -18810, S = 32.067, Cp = -5.328, V = 21.631, a1 = 4.2750, a2 = 3.7555, a3 = 4.2739, a4 = -2.9343, c1 = 3.0441, c2 = -4.1199, omega = 0)
+
+
+# set up system
+# use H2S here: it's the predominant species at the pH of the QMK buffer -- see sulfur()
+basis(c("Al2O3", "quartz", "Fe", "Ag", "K+", "Cl-", "H2S", "H2O", "oxygen", "H+"))
+# set molality of K+ in completely dissociated 0.5 molal KCl
+# NOTE: This value is used only for making the legend;
+# activities corrected for ionic strength are computed below
+basis("K+", log10(0.5))
+
+# create a pH buffer
+mod.buffer("QMK", c("quartz", "muscovite", "K-feldspar"), "cr", 0)
+
+# define colors for Ag(HS)2-, AgHS, AgCl2-
+col <- c("#ED4037", "#F58645", "#22CC88")
+
+
+
+Ag_T2 <- function() {
+  species(c("Ag(HS)2-", "AgHS", "AgCl2-"))
+  # total S = 0.01 m
+  basis("H2S", -2)
+  # apply PPM buffer for fO2
+  basis("O2", "PPM")
+  # apply QMK buffer for pH
+  basis("H+", "QMK")
+  # estimate solution composition for 1.5 m NaCl and 0.5 m KCl
+  chl <- chloride(T = seq(150, 550, 10), P = 1000, m_NaCl = 1.5, m_KCl = 0.5)
+  #  # calculate affinity and solubility, considering speciation of sulfur
+  #  bases <- c("H2S", "HS-", "SO4-2", "HSO4-")
+  #  m <- mosaic(bases, T = seq(150, 550, 10), `Cl-` = log10(chl$m_Cl), `K+` = log10(chl$m_K), P = 1000, IS = chl$IS)
+  #  s <- solubility(m$A.species)
+  a <- affinity(T = seq(150, 550, 10), `Cl-` = log10(chl$m_Cl), `K+` = log10(chl$m_K), P = 1000, IS = chl$IS)
+  s <- solubility(a)
+  # make diagram and show total log molality
+  diagram(s, ylim = c(-10, -3), col = col, lwd = 2, lty = 1)
+  diagram(s, add = TRUE, type = "loga.balance", lwd = 3, lty = 2)
+  # make legend and title
+  dP <- describe.property("P", 1000)
+  dNaCl <- expression(italic(m)[NaCl] == 1.5)
+  dKCl <- expression(italic(m)[KCl] == 0.5)
+  legend("topleft", c(dP, dNaCl, dKCl), bty = "n")
+  dH2S <- expr.species("H2S", value = 0.01, molality = TRUE)
+  dO2 <- describe.basis(ibasis = 9)
+  dpH <- describe.basis(ibasis = 10)
+  legend(300, -3, c(dH2S, dO2, dpH), bty = "n")
+}
+
+Ag_T2()
