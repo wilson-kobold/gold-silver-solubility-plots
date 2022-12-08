@@ -1,0 +1,32 @@
+# modify to use thermodynamic properties recommended by Pokrovski et al. 2014
+mod.obigt("Ag(HS)2-", G = 287, H = -6636, S = 49.00, Cp = 3.348, V = 42.82, a1 = 7.8651, a2 = 11.4225, a3 = 1.2604, a4 = -3.2512, c1 = 13.9576, c2 = -2.3624, omega = 0.6367)
+mod.obigt("AgCl2-", G = -51350, H = -60092, S = 49.78, Cp = -16.6, V = 37.1, a1 = 7.1327, a2 = 9.8065, a3 = 1.8947, a4 = -3.1844, c1 = 4.8953, c2 = -6.7789, omega = 0.6667)
+mod.obigt("AgCl", G = -17399, H = -18810, S = 32.067, Cp = -5.328, V = 21.631, a1 = 4.2750, a2 = 3.7555, a3 = 4.2739, a4 = -2.9343, c1 = 3.0441, c2 = -4.1199, omega = 0)
+
+
+# define temperature (degrees C), pressure (bar), grid resolution
+T <- 180
+P <- "Psat"
+res <- 600
+# make smooth (TRUE) or sharp (FALSE) transitions between basis species 
+blend <- TRUE
+
+# set up system
+basis(c("Ag", "Cl-", "H2S", "H2O", "oxygen", "H+"))
+species(c("Ag(HS)2-", "AgCl2-", "AgCl", "Ag+", "Ag(OH)2-", "AgOH", "AgHS"))
+# this get us close to total S = 0.01 m
+basis("H2S", -2)
+# calculate solution composition for 1 mol/kg NaCl
+NaCl <- NaCl(T = T, P = P, m_tot=1)
+basis("Cl-", log10(NaCl$m_Cl))
+# calculate affinity with changing basis species
+bases <- c("H2S", "HS-", "HSO4-", "SO4-2")
+m <- mosaic(bases, pH = c(2, 10, res), O2 = c(-53, -34, res), T = T, P = P, IS = NaCl$IS, blend = blend)
+# calculate and plot solubility
+s <- solubility(m$A.species)
+# convert to ppb
+s <- convert(s, "ppb")
+diagram(s, type="loga.balance", levels = c(0.01, 0.1, 1, 10, 100, 1000, 10000))
+# show predominance fields
+diagram(m$A.bases, add=TRUE, col = "red", col.names = "red", limit.water = FALSE, lty = 2, italic = TRUE)
+diagram(m$A.species, add=TRUE, col = "skyblue4", col.names = "skyblue4", limit.water = FALSE, lwd = 2, bold = TRUE)
