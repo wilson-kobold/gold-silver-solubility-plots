@@ -1,0 +1,39 @@
+# gold solubility contours on logfO2-pH diagram
+# adapted from demo by J. Dick 
+# After Williams-Jones et al., 2009, Fig. 3
+# doi:10.2113/gselements.5.5.281
+
+
+# modify to use thermodynamic properties recommended by Pokrovski et al. 2014
+mod.obigt("Au(HS)2-", G = 3487, H = 4703, S = 77.46, Cp = 3.3, V = 75.1, a1 = 12.3373, a2 = 22.3421, a3 = 3.0317, a4 = -3.7026, c1 = -53.6010, c2 = 31.4030, omega = 0.7673)
+mod.obigt("AuCl2-", G = -36795, H = -46664, S = 47.16, Cp = -26.4, V = 68.6, a1 = 11.4774, a2 = 20.2425, a3 = -2.2063, a4 = -3.6158, c1 = 27.0677, c2 = -22.440, omega = 0.8623)
+mod.obigt("AuCl", G = -3184, H = -2077, S = 41.73, Cp = -15.1, V = 53.1, a1 = 9.0294, a2 = 14.2654, a3 = 0.1430, a4 = -3.3687, c1 = -2.6993, c2 = -6.1162, omega = 0)
+mod.obigt("Au+", G = 39000, H = 45182, S = 16.5, Cp = 0.58, V = 31.4, a1 = 6.1161, a2 = 7.1520, a3 = 2.9389, a4 = -3.0747, c1 = 7.7764, c2 = -2.9158, omega = 0.1390)
+mod.obigt("Au(HS)", G = 8344, H = 13193, S = 50.86, Cp = 1.8, V = 56.5, a1 = 9.4965, a2 = 15.4057, a3 = -0.3052, a4 = -3.1459, c1 = -38.1356, c2 = 19.6524, omega = 0.0)
+
+# define temperature (degrees C), pressure (bar), grid resolution
+T <- 180
+P <- "Psat"
+res <- 600
+# make smooth (TRUE) or sharp (FALSE) transitions between basis species 
+blend <- TRUE
+
+# set up system
+basis(c("Au", "Cl-", "H2S", "H2O", "oxygen", "H+", "Fe"))
+species(c("Au(HS)2-", "AuCl2-", "AuCl", "Au+", "Au(OH)2-", "AuOH", "AuHS"))
+# this get us close to total S = 0.01 m
+basis("H2S", -2)
+# calculate solution composition for 1 mol/kg NaCl
+NaCl <- NaCl(T = T, P = P, m_tot=1)
+basis("Cl-", log10(NaCl$m_Cl))
+# calculate affinity with changing basis species
+bases <- c("H2S", "HS-", "HSO4-", "SO4-2")
+m <- mosaic(bases, pH = c(2, 10, res), O2 = c(-53, -34, res), T = T, P = P, IS = NaCl$IS, blend = blend)
+# calculate and plot solubility
+s <- solubility(m$A.species)
+# convert to ppb
+s <- convert(s, "ppb")
+diagram(s, type="loga.balance", levels = c(1, 10, 100, 1000))
+# show predominance fields
+diagram(m$A.bases, add=TRUE, col = "red", col.names = "red", limit.water = FALSE, lty = 2, italic = TRUE)
+diagram(m$A.species, add=TRUE, col = "goldenrod4", col.names = "goldenrod4", limit.water = FALSE, lwd = 2, bold = TRUE)
