@@ -1,0 +1,66 @@
+
+
+# CHNOSZ/demo/gold.R: Au solubility calculations
+# 20181101 jmd first version
+# 20181109 add calculation of K+ molality
+# 20190127 update Au species in OBIGT, not here
+
+# modify to use thermodynamic properties recommended by Pokrovski et al. 2014
+mod.obigt("Au(HS)2-", G = 3487, H = 4703, S = 77.46, Cp = 3.3, V = 75.1, a1 = 12.3373, a2 = 22.3421, a3 = 3.0317, a4 = -3.7026, c1 = -53.6010, c2 = 31.4030, omega = 0.7673)
+mod.obigt("AuCl2-", G = -36795, H = -46664, S = 47.16, Cp = -26.4, V = 68.6, a1 = 11.4774, a2 = 20.2425, a3 = -2.2063, a4 = -3.6158, c1 = 27.0677, c2 = -22.440, omega = 0.8623)
+mod.obigt("AuCl", G = -3184, H = -2077, S = 41.73, Cp = -15.1, V = 53.1, a1 = 9.0294, a2 = 14.2654, a3 = 0.1430, a4 = -3.3687, c1 = -2.6993, c2 = -6.1162, omega = 0)
+mod.obigt("Au+", G = 39000, H = 45182, S = 16.5, Cp = 0.58, V = 31.4, a1 = 6.1161, a2 = 7.1520, a3 = 2.9389, a4 = -3.0747, c1 = 7.7764, c2 = -2.9158, omega = 0.1390)
+mod.obigt("Au(HS)", G = 8344, H = 13193, S = 50.86, Cp = 1.8, V = 56.5, a1 = 9.4965, a2 = 15.4057, a3 = -0.3052, a4 = -3.1459, c1 = -38.1356, c2 = 19.6524, omega = 0.0)
+
+
+# set up system
+# use H2S here: it's the predominant species at the pH of the QMK buffer -- see sulfur()
+basis(c("Al2O3", "quartz", "Fe", "Au", "K+", "Cl-", "H2S", "H2O", "oxygen", "H+"))
+# set molality of K+ in completely dissociated 0.5 molal KCl
+# NOTE: This value is used only for making the legend;
+# activities corrected for ionic strength are computed below
+basis("K+", log10(0.5))
+
+# create a pH buffer
+mod.buffer("QMK", c("quartz", "muscovite", "K-feldspar"), "cr", 0)
+
+# define colors for Au(HS)2-, AuHS, AuOH, AuCl2-
+# after Williams-Jones et al., 2009
+# (doi:10.2113/gselements.5.5.281)
+col <- c("#ED4037", "#F58645", "#0F9DE2", "#22CC88")
+
+# log(m_Au)-T diagram like Fig. 2A of Williams-Jones et al., 2009 and Fig. 8a of Pokrovski et al., 2014
+# (doi:10.2113/gselements.5.5.281)
+# (doi:10.1144/SP402.4)
+Au_T2 <- function() {
+  species(c("Au(HS)2-", "AuHS", "AuOH", "AuCl2-"))
+  # total S = 0.01 m
+  basis("H2S", -2)
+  # apply PPM buffer for fO2
+  basis("O2", "PPM")
+  # apply QMK buffer for pH
+  basis("H+", "QMK")
+  # estimate solution composition for 1.5 m NaCl and 0.5 m KCl
+  chl <- chloride(T = seq(150, 550, 10), P = 1000, m_NaCl = 1.5, m_KCl = 0.5)
+  #  # calculate affinity and solubility, considering speciation of sulfur
+  #  bases <- c("H2S", "HS-", "SO4-2", "HSO4-")
+  #  m <- mosaic(bases, T = seq(150, 550, 10), `Cl-` = log10(chl$m_Cl), `K+` = log10(chl$m_K), P = 1000, IS = chl$IS)
+  #  s <- solubility(m$A.species)
+  a <- affinity(T = seq(150, 550, 10), `Cl-` = log10(chl$m_Cl), `K+` = log10(chl$m_K), P = 1000, IS = chl$IS)
+  s <- solubility(a)
+  # make diagram and show total log molality
+  diagram(s, ylim = c(-10, -3), col = col, lwd = 2, lty = 1)
+  diagram(s, add = TRUE, type = "loga.balance", lwd = 3, lty = 2)
+  # make legend and title
+  dP <- describe.property("P", 1000)
+  dNaCl <- expression(italic(m)[NaCl] == 1.5)
+  dKCl <- expression(italic(m)[KCl] == 0.5)
+  legend("topleft", c(dP, dNaCl, dKCl), bty = "n")
+  dH2S <- expr.species("H2S", value = 0.01, molality = TRUE)
+  dO2 <- describe.basis(ibasis = 9)
+  dpH <- describe.basis(ibasis = 10)
+  legend(300, -3, c(dH2S, dO2, dpH), bty = "n")
+  title(main=("After Williams-Jones et al., 2009, Fig. 2A"), font.main = 1)
+}
+
+Au_T2()
